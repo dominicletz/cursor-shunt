@@ -1,0 +1,46 @@
+import { access, readFile } from "node:fs/promises";
+import { constants } from "node:fs";
+
+export const minLines = () => {
+  const value = Number.parseInt(process.env.SHUNT_MIN_LINES ?? "350", 10);
+  return Number.isFinite(value) && value > 0 ? value : 350;
+};
+
+export async function input() {
+  try {
+    return JSON.parse(await readFile(0, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+export function allow() {
+  process.stdout.write(JSON.stringify({ permission: "allow" }));
+}
+
+export function deny(message) {
+  process.stdout.write(JSON.stringify({ permission: "deny", agent_message: message }));
+}
+
+export function pathFrom(value) {
+  if (typeof value === "string") return value;
+  if (value && typeof value.path === "string") return value.path;
+  if (value && typeof value.filePath === "string") return value.filePath;
+  return undefined;
+}
+
+export async function isLargeFile(path) {
+  if (!path) return false;
+  try {
+    await access(path, constants.R_OK);
+    const body = await readFile(path, "utf8");
+    return body.split(/\r?\n/).length >= minLines();
+  } catch {
+    return false;
+  }
+}
+
+export function hasTargetedRange(value) {
+  const text = JSON.stringify(value ?? {});
+  return /(?:^|["'\s])(?:offset|startLine|start_line|lineStart|limit|endLine|end_line|lineEnd)(?:["'\s:=]|$)/i.test(text);
+}

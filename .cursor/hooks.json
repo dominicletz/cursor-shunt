@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeReadFile": [
+      {
+        "command": "node .cursor/hooks/before-read-file.mjs"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "node .cursor/hooks/before-shell-execution.mjs"
+      }
+    ]
+  }
+}

@@ -3,9 +3,10 @@ import { hasTargetedRange, input, isLargeFile, pathFrom, deny, allow } from "./c
 try {
   const event = await input();
   const inputValue = event.tool_input ?? event.input ?? event;
-  const path = pathFrom(inputValue?.path) ?? pathFrom(inputValue?.filePath) ?? pathFrom(inputValue);
+  const path = pathFrom(inputValue) ?? pathFrom(event);
+  const content = inputValue?.content ?? event.content;
 
-  if (hasTargetedRange(inputValue) || !(await isLargeFile(path))) {
+  if (hasTargetedRange(inputValue) || !(await isLargeFile(path, content))) {
     allow();
   } else {
     deny(

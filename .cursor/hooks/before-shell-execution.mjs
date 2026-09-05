@@ -1,4 +1,4 @@
-import { hasTargetedRange, input, isLargeFile, pathFrom, deny, allow } from "./common.mjs";
+import { hasTargetedRange, input, isLargeFile, deny, allow } from "./common.mjs";
 
 const viewer = /\b(?:cat|head|tail|less|more)\b/;
 const pipeOrRedirect = /(?:\||>>?)/;

@@ -14,6 +14,7 @@ async function main() {
   const target = first(parsed, "target");
   const agent = await Agent.create({
     apiKey: ensureApiKey(),
+    local: { cwd: process.cwd() },
     model: model(),
     tools: ["read"],
     systemPrompt: "You are a disciplined code generator. Match the supplied reference's conventions exactly. Output only the requested code, with no markdown fences, explanation, or preamble."

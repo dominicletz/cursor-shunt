@@ -14,6 +14,7 @@ async function main() {
   const corpus = await fileXml(paths);
   const agent = await Agent.create({
     apiKey: ensureApiKey(),
+    local: { cwd: process.cwd() },
     model: model(),
     tools: [],
     systemPrompt: "You are a precise code analyst. Return structured bullets only. Lead with the name, type, and line number for every finding. Answer the question from the supplied files; do not speculate or add a preamble."

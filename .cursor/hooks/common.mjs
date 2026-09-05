@@ -31,11 +31,13 @@ export function deny(message) {
 export function pathFrom(value) {
   if (typeof value === "string") return value;
   if (value && typeof value.path === "string") return value.path;
+  if (value && typeof value.file_path === "string") return value.file_path;
   if (value && typeof value.filePath === "string") return value.filePath;
   return undefined;
 }
 
-export async function isLargeFile(path) {
+export async function isLargeFile(path, content) {
+  if (typeof content === "string") return lineCount(content) >= minLines();
   if (!path) return false;
   try {
     await access(path, constants.R_OK);

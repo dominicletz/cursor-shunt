@@ -11,7 +11,7 @@
     "bulk-read": "tsx scripts/bulk-read.ts",
     "code-write": "tsx scripts/code-write.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit",
+    "lint": "eslint .",
     "test": "node --import tsx --test test/**/*.test.ts"
   },
   "dependencies": {
@@ -19,6 +19,8 @@
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
+    "eslint": "^9.35.0",
+    "typescript-eslint": "^8.42.0",
     "tsx": "^4.23.13",
     "typescript": "^5.9.2"
   }

@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 
 export const DEFAULT_OUTPUT_DIRECTORY = resolve(process.cwd(), "bench/fixture/generated");
 export const RECORD_COUNT = 180;
+export const SHUNT_MIN_LINES = 350;
 
 export const FIXTURE_FILE_SPECS = [
   {
@@ -35,6 +36,10 @@ export type FixtureFileSpec = (typeof FIXTURE_FILE_SPECS)[number];
 
 function hasPattern(spec: FixtureFileSpec, pattern: string): boolean {
   return spec.patterns.includes(pattern as (typeof spec.patterns)[number]);
+}
+
+export function fixtureLineCount(value: string): number {
+  return value.length === 0 ? 0 : value.split(/\r?\n/).length;
 }
 
 export function renderFixtureFile(spec: FixtureFileSpec, recordCount = RECORD_COUNT): string {
@@ -85,7 +90,11 @@ export async function writeFixture(outputDirectory = DEFAULT_OUTPUT_DIRECTORY): 
   for (const spec of FIXTURE_FILE_SPECS) {
     const path = resolve(outputDirectory, spec.relativePath);
     await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, renderFixtureFile(spec), "utf8");
+    const content = renderFixtureFile(spec);
+    if (fixtureLineCount(content) < SHUNT_MIN_LINES) {
+      throw new Error(`${spec.relativePath} must be at least ${SHUNT_MIN_LINES} lines`);
+    }
+    await writeFile(path, content, "utf8");
     paths.push(path);
   }
 

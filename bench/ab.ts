@@ -2,7 +2,7 @@ import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/pr
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { Agent, type AgentUsage } from "@cursor/sdk";
-import { DEFAULT_OUTPUT_DIRECTORY, FIXTURE_FILE_SPECS, writeFixture } from "./generate-fixture.js";
+import { DEFAULT_OUTPUT_DIRECTORY, FIXTURE_FILE_SPECS, SHUNT_MIN_LINES, writeFixture } from "./generate-fixture.js";
 import {
   percentageSavings,
   sumCost,
@@ -10,12 +10,23 @@ import {
   type TokenUsage,
   type UsageCost,
 } from "./summary.js";
+import { isBulkReadInvocation } from "./routing.js";
+
+export { isBulkReadInvocation };
 
 const DEFAULT_PARENT_MODEL = "gpt-5.6-sol";
 const REPO_ROOT = resolve(process.cwd());
 const FIXTURE_ROOT = resolve(REPO_ROOT, "bench/fixture");
 const PROMPT_PATH = join(FIXTURE_ROOT, "PROMPT.md");
 const EXPECTED_LARGE_FILE_COUNT = FIXTURE_FILE_SPECS.length;
+const GENERATED_PATHS = FIXTURE_FILE_SPECS.map((spec) => `generated/${spec.relativePath}`);
+const BULK_READ_QUESTION = "Find every db.query and authenticate occurrence by file, symbol, and line number.";
+const SHUNT_REQUIRED_INSTRUCTION = [
+  "Mandatory shunt routing: after any denied large read (or instead of broad reads), you MUST run exactly:",
+  `npx tsx scripts/bulk-read.ts --question "${BULK_READ_QUESTION}" --paths ${GENERATED_PATHS.join(" ")}`,
+  "Do not finish without that helper call.",
+].join("\n");
+const DEFAULT_FAILURE_OUTPUT = resolve(REPO_ROOT, "bench/results/bench-failure.json");
 
 type Arm = "baseline" | "shunt";
 
@@ -60,6 +71,12 @@ interface BenchmarkReport {
   runs: number;
   fixtureFiles: string[];
   arms: ArmReport[];
+  failure?: {
+    arm: Arm | null;
+    run: number | null;
+    error: string;
+    routing: RoutingEvidence | null;
+  };
   summary: {
     baselineParentTokens: number | null;
     shuntParentTokens: number | null;
@@ -70,6 +87,28 @@ interface BenchmarkReport {
     totalChargedCents: number | null;
     costNote: string;
   };
+}
+
+class RoutingCheckError extends Error {
+  constructor(
+    message: string,
+    readonly evidence: RoutingEvidence,
+  ) {
+    super(`${message}; routing evidence: ${JSON.stringify(evidence)}`);
+    this.name = "RoutingCheckError";
+  }
+}
+
+class BenchmarkRunError extends Error {
+  constructor(
+    readonly arm: Arm,
+    readonly runNumber: number,
+    message: string,
+    readonly routing: RoutingEvidence | null,
+  ) {
+    super(`bench:ab ${arm} run ${runNumber}: ${message}`);
+    this.name = "BenchmarkRunError";
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -123,6 +162,26 @@ function parentModel(): string {
   return process.env.BENCH_PARENT_MODEL?.trim() || DEFAULT_PARENT_MODEL;
 }
 
+function promptForArm(arm: Arm, prompt: string): string {
+  if (arm === "baseline") return prompt;
+  return `${prompt.trimEnd()}\n\n${SHUNT_REQUIRED_INSTRUCTION}\n`;
+}
+
+async function verifyShuntWorkspace(workspace: string): Promise<void> {
+  const hooks = JSON.parse(await readFile(join(workspace, ".cursor", "hooks.json"), "utf8")) as unknown;
+  const configuredHooks = isRecord(hooks) && isRecord(hooks.hooks) ? hooks.hooks.beforeReadFile : undefined;
+  const hasBeforeReadFile = Array.isArray(configuredHooks)
+    && configuredHooks.some((entry: unknown) => (
+      isRecord(entry)
+      && typeof entry.command === "string"
+      && entry.command.includes("before-read-file.mjs")
+    ));
+  if (!hasBeforeReadFile) {
+    throw new Error("shunt workspace is missing the .cursor beforeReadFile hook");
+  }
+  await readFile(join(workspace, ".cursor", "hooks", "before-read-file.mjs"), "utf8");
+}
+
 async function prepareWorkspace(arm: Arm, fixtureDirectory: string, runNumber: number): Promise<string> {
   const workspace = await mkdtemp(join(tmpdir(), `cursor-shunt-bench-${arm}-${runNumber}-`));
   try {
@@ -134,6 +193,7 @@ async function prepareWorkspace(arm: Arm, fixtureDirectory: string, runNumber: n
       await cp(join(REPO_ROOT, "scripts"), join(workspace, "scripts"), { recursive: true });
       await cp(join(REPO_ROOT, "package.json"), join(workspace, "package.json"));
       await symlink(join(REPO_ROOT, "node_modules"), join(workspace, "node_modules"), "dir");
+      await verifyShuntWorkspace(workspace);
     }
 
     return workspace;
@@ -210,11 +270,6 @@ function pathFrom(args: unknown): string | undefined {
   return undefined;
 }
 
-function commandFrom(args: unknown): string | undefined {
-  if (!isRecord(args)) return undefined;
-  return typeof args.command === "string" ? args.command : undefined;
-}
-
 function fixturePathKey(path: string): string | undefined {
   for (const spec of FIXTURE_FILE_SPECS) {
     if (
@@ -255,7 +310,7 @@ function inspectRouting(transcript: unknown[]): RoutingEvidence {
         if (isDeniedLargeRead(call)) deniedLargeReadCallCount += 1;
       }
     }
-    if ((name === "shell" || name.includes("shell")) && /\b(?:bulk-read|bulk_read)\b/.test(commandFrom(call.args) ?? "")) {
+    if ((name === "shell" || name.includes("shell")) && isBulkReadInvocation(call.args)) {
       bulkReadCallCount += 1;
     }
   }
@@ -294,19 +349,21 @@ function assertRouting(arm: Arm, routing: RoutingEvidence): void {
       routing.largeReadFiles.length !== EXPECTED_LARGE_FILE_COUNT
       || routing.successfulLargeReadCallCount < EXPECTED_LARGE_FILE_COUNT
     ) {
-      throw new Error(
+      throw new RoutingCheckError(
         `baseline routing check failed: expected successful reads of ${EXPECTED_LARGE_FILE_COUNT} large files, observed ${routing.largeReadFiles.length} files and ${routing.successfulLargeReadCallCount} successful reads`,
+        routing,
       );
     }
     return;
   }
 
   if (routing.bulkReadCallCount === 0) {
-    throw new Error("shunt routing check failed: no bulk-read helper call was present in the parent transcript");
+    throw new RoutingCheckError("shunt routing check failed: no bulk-read helper call was present in the parent transcript", routing);
   }
   if (routing.successfulLargeReadCallCount !== 0) {
-    throw new Error(
+    throw new RoutingCheckError(
       `shunt routing check failed: observed ${routing.successfulLargeReadCallCount} successful large-file reads`,
+      routing,
     );
   }
 }
@@ -329,18 +386,23 @@ async function runArm(
 ): Promise<ArmReport> {
   const workspace = await prepareWorkspace(arm, fixtureDirectory, runNumber);
   const previousThreshold = process.env.SHUNT_MIN_LINES;
-  if (arm === "shunt") process.env.SHUNT_MIN_LINES = "350";
+  if (arm === "shunt") process.env.SHUNT_MIN_LINES = String(SHUNT_MIN_LINES);
   let agent: Awaited<ReturnType<typeof Agent.create>> | undefined;
+  const agentPrompt = promptForArm(arm, prompt);
 
   try {
     agent = await Agent.create({
       apiKey,
       model: { id: parentModel() },
       tools: ["read", "shell", "glob", "grep"],
-      local: { cwd: workspace, dirs: [workspace] },
+      local: {
+        cwd: workspace,
+        dirs: [workspace],
+        settingSources: arm === "shunt" ? ["project"] : [],
+      },
       name: `cursor-shunt-benchmark-${arm}-${runNumber}`,
     });
-    const run = await agent.send(prompt);
+    const run = await agent.send(agentPrompt);
     const response = await run.wait();
     const transcript = await run.conversation();
     let usage: AgentUsage | undefined;
@@ -375,7 +437,8 @@ async function runArm(
       routing,
     };
   } catch (error) {
-    throw new Error(`bench:ab ${arm} run ${runNumber}: ${errorMessage(error)}`);
+    const routing = error instanceof RoutingCheckError ? error.evidence : null;
+    throw new BenchmarkRunError(arm, runNumber, errorMessage(error), routing);
   } finally {
     agent?.close();
     if (previousThreshold === undefined) {
@@ -410,34 +473,70 @@ function summarize(arms: ArmReport[]): BenchmarkReport["summary"] {
   };
 }
 
-export async function main(argv = process.argv.slice(2)): Promise<void> {
-  const options = parseOptions(argv);
-  const apiKey = requireApiKey();
-  const fixturePaths = await writeFixture(DEFAULT_OUTPUT_DIRECTORY);
-  const prompt = await readFile(PROMPT_PATH, "utf8");
-  const arms: ArmReport[] = [];
-
-  for (let runNumber = 1; runNumber <= options.runs; runNumber += 1) {
-    arms.push(await runArm("baseline", runNumber, prompt, DEFAULT_OUTPUT_DIRECTORY, apiKey));
-    arms.push(await runArm("shunt", runNumber, prompt, DEFAULT_OUTPUT_DIRECTORY, apiKey));
-  }
-
-  const report: BenchmarkReport = {
-    schemaVersion: 1,
-    generatedAt: new Date().toISOString(),
-    parentModel: parentModel(),
-    runs: options.runs,
-    fixtureFiles: fixturePaths.map((path) => path.replace(`${DEFAULT_OUTPUT_DIRECTORY}/`, "")),
-    arms,
-    summary: summarize(arms),
-  };
+async function writeReport(report: BenchmarkReport, outputPath: string | undefined): Promise<string> {
   const serialized = JSON.stringify(report, null, 2);
-  if (options.output) {
-    const outputPath = resolve(process.cwd(), options.output);
+  if (outputPath) {
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, `${serialized}\n`, "utf8");
   }
-  console.log(serialized);
+  return serialized;
+}
+
+export async function main(argv = process.argv.slice(2)): Promise<void> {
+  const options = parseOptions(argv);
+  let fixturePaths: string[] = [];
+  const arms: ArmReport[] = [];
+
+  try {
+    const apiKey = requireApiKey();
+    fixturePaths = await writeFixture(DEFAULT_OUTPUT_DIRECTORY);
+    const prompt = await readFile(PROMPT_PATH, "utf8");
+
+    for (let runNumber = 1; runNumber <= options.runs; runNumber += 1) {
+      arms.push(await runArm("baseline", runNumber, prompt, DEFAULT_OUTPUT_DIRECTORY, apiKey));
+      arms.push(await runArm("shunt", runNumber, prompt, DEFAULT_OUTPUT_DIRECTORY, apiKey));
+    }
+
+    const report: BenchmarkReport = {
+      schemaVersion: 1,
+      generatedAt: new Date().toISOString(),
+      parentModel: parentModel(),
+      runs: options.runs,
+      fixtureFiles: fixturePaths.map((path) => path.replace(`${DEFAULT_OUTPUT_DIRECTORY}/`, "")),
+      arms,
+      summary: summarize(arms),
+    };
+    const outputPath = options.output ? resolve(process.cwd(), options.output) : undefined;
+    const serialized = await writeReport(report, outputPath);
+    console.log(serialized);
+  } catch (error) {
+    const runError = error instanceof BenchmarkRunError ? error : undefined;
+    const failureReport: BenchmarkReport = {
+      schemaVersion: 1,
+      generatedAt: new Date().toISOString(),
+      parentModel: parentModel(),
+      runs: options.runs,
+      fixtureFiles: fixturePaths.map((path) => path.replace(`${DEFAULT_OUTPUT_DIRECTORY}/`, "")),
+      arms,
+      failure: {
+        arm: runError?.arm ?? null,
+        run: runError?.runNumber ?? null,
+        error: errorMessage(error),
+        routing: runError?.routing ?? null,
+      },
+      summary: summarize(arms),
+    };
+    const failureOutput = options.output
+      ? resolve(process.cwd(), options.output)
+      : DEFAULT_FAILURE_OUTPUT;
+    try {
+      await writeReport(failureReport, failureOutput);
+      console.error(`bench:ab: failure summary written to ${failureOutput}`);
+    } catch (writeError) {
+      console.error(`bench:ab: could not write failure summary: ${errorMessage(writeError)}`);
+    }
+    throw error;
+  }
 }
 
 if (process.argv[1]?.endsWith("bench/ab.ts")) {

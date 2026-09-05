@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, rm } from "node:fs/promises";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";

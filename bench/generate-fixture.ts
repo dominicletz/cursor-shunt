@@ -79,7 +79,7 @@ function sourceLines(definition: SourceDefinition): string[] {
       ...(callsDatabase
         ? [
             `    const result = await db.query("SELECT * FROM ${definition.domain} WHERE value = $1", [normalized]);`,
-            "    return `${this.domain}:${result.rows.length}:${checksum}`;",
+            "    return `${marker}:${result.rows.length}`;",
           ]
         : ["    return `${this.domain}:${marker}`;"]),
       "  }",

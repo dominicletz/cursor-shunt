@@ -531,7 +531,8 @@ function parseRuns(argv: string[]): number {
 }
 
 async function main(): Promise<void> {
-  if (!process.env.CURSOR_API_KEY?.trim()) {
+  const helpRequested = process.argv.slice(2).some((argument) => argument === "--help" || argument === "-h");
+  if (!process.env.CURSOR_API_KEY?.trim() && !helpRequested) {
     throw new Error("CURSOR_API_KEY is required for the paid SDK benchmark");
   }
 

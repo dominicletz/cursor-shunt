@@ -11,7 +11,7 @@ import {
   type UsageCost,
 } from "./summary.js";
 
-const DEFAULT_PARENT_MODEL = "gpt-5.6";
+const DEFAULT_PARENT_MODEL = "gpt-5.6-sol";
 const REPO_ROOT = resolve(process.cwd());
 const FIXTURE_ROOT = resolve(REPO_ROOT, "bench/fixture");
 const PROMPT_PATH = join(FIXTURE_ROOT, "PROMPT.md");

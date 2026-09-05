@@ -10,7 +10,7 @@ against two isolated temporary workspaces:
   `scripts/bulk-read.ts`.
 
 Both arms use the same parent model. `BENCH_PARENT_MODEL` selects the model and
-defaults to the pinned non-Auto model `gpt-5.6`. The Luna worker model is
+defaults to the pinned non-Auto model `gpt-5.6-sol`. The Luna worker model is
 controlled independently by `SHUNT_MODEL` and defaults to `gpt-5.6-luna`.
 
 ## Local run
@@ -27,7 +27,7 @@ commit it:
 
 ```sh
 export CURSOR_API_KEY="<your-own-Cursor-API-key>"
-BENCH_PARENT_MODEL=gpt-5.6 npm run bench:ab -- \
+BENCH_PARENT_MODEL=gpt-5.6-sol npm run bench:ab -- \
   --runs 1 \
   --output bench/results/local-summary.json
 ```

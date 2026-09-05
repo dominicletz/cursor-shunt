@@ -6,6 +6,12 @@
         "command": "node .cursor/hooks/before-read-file.mjs"
       }
     ],
+    "preToolUse": [
+      {
+        "command": "node .cursor/hooks/before-read-file.mjs",
+        "matcher": "Read|read|ReadFile|read_file|TabRead"
+      }
+    ],
     "beforeShellExecution": [
       {
         "command": "node .cursor/hooks/before-shell-execution.mjs"

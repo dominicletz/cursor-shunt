@@ -2,11 +2,16 @@ import { hasTargetedRange, input, isLargeFile, pathFrom, deny, allow } from "./c
 
 try {
   const event = await input();
-  const inputValue = event.tool_input ?? event.input ?? event;
+  const nestedInput = event?.tool_input ?? event?.input;
+  const inputValue = nestedInput && typeof nestedInput === "object" ? nestedInput : event;
   const path = pathFrom(inputValue) ?? pathFrom(event);
-  const content = inputValue?.content ?? event.content;
+  const content = typeof inputValue?.content === "string"
+    ? inputValue.content
+    : typeof event?.content === "string" ? event.content : undefined;
+  const targetedRange = hasTargetedRange(inputValue)
+    || (inputValue !== event && hasTargetedRange(event));
 
-  if (hasTargetedRange(inputValue) || !(await isLargeFile(path, content))) {
+  if (targetedRange || !(await isLargeFile(path, content))) {
     allow();
   } else {
     deny(

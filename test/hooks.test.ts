@@ -38,6 +38,26 @@ test("read hook handles Cursor file_path and content payloads", async () => {
   assert.equal((await hook(script, { file_path: "missing-but-provided-content.ts", content: "one\ntwo\nthree", offset: 1, limit: 1 })).permission, "allow");
 });
 
+test("preToolUse read payloads deny broad reads and honor nested ranges/content", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "cursor-shunt-"));
+  const path = join(directory, "large.txt");
+  await writeFile(path, "one\ntwo\nthree", "utf8");
+  const script = ".cursor/hooks/before-read-file.mjs";
+
+  assert.equal((await hook(script, {
+    tool_name: "Read",
+    tool_input: { file_path: path },
+  })).permission, "deny");
+  assert.equal((await hook(script, {
+    tool_name: "read",
+    tool_input: { file_path: "missing-but-provided-content.ts", content: "one\ntwo\nthree" },
+  })).permission, "deny");
+  assert.equal((await hook(script, {
+    tool_name: "Read",
+    tool_input: { file_path: path, offset: 2, limit: 1 },
+  })).permission, "allow");
+});
+
 test("shell hook denies cat/head of large files but allows pipes", async () => {
   const directory = await mkdtemp(join(tmpdir(), "cursor-shunt-"));
   const path = join(directory, "large.txt");

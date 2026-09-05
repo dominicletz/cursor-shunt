@@ -7,7 +7,11 @@ against two isolated temporary workspaces:
   large files directly.
 - `shunt`: project hooks, skills, and helper scripts are copied in. Broad
   large-file reads are denied and the parent is expected to use
-  `scripts/bulk-read.ts`.
+  `scripts/bulk-read.ts`. The shunt parent deliberately receives only the
+  `shell` tool because the SDK environment used by CI has been observed not to
+  fire project Read hooks reliably. This fallback measures delegation savings
+  when SDK Read-hook enforcement does not fire; normal IDE/CLI agent sessions
+  still use the copied `beforeReadFile` and `preToolUse` hooks.
 
 Both arms use the same parent model. `BENCH_PARENT_MODEL` selects the model and
 defaults to the pinned non-Auto model `gpt-5.6-sol`. The Luna worker model is
@@ -42,7 +46,10 @@ full prompts or transcripts.
 The report includes parent token totals, Luna worker tokens when the helper
 reports them, measured parent savings, and SDK-reported parent cost when
 available. Total cost is left null when the helper's billed cost is not
-available. No savings values are fabricated or checked into this repository.
+available. Successful reports include both complete arm records and
+`parentSavingsPercent`; failed runs write the same partial report to the
+artifact path. No savings values are fabricated or checked into this
+repository.
 
 ## GitHub Actions
 

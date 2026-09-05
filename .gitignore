@@ -5,5 +5,6 @@ dist/
 *.log
 bench/.runs/
 bench/fixture/.cursor/
+bench/fixture/package.json
 bench/fixture/packages/
 bench/fixture/scripts/

@@ -6,9 +6,15 @@ export const minLines = () => {
   return Number.isFinite(value) && value > 0 ? value : 350;
 };
 
+export function lineCount(body) {
+  return body.length === 0 ? 0 : body.split(/\r?\n/).length;
+}
+
 export async function input() {
   try {
-    return JSON.parse(await readFile(0, "utf8"));
+    const chunks = [];
+    for await (const chunk of process.stdin) chunks.push(chunk);
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
   } catch {
     return {};
   }
@@ -34,7 +40,7 @@ export async function isLargeFile(path) {
   try {
     await access(path, constants.R_OK);
     const body = await readFile(path, "utf8");
-    return body.split(/\r?\n/).length >= minLines();
+    return lineCount(body) >= minLines();
   } catch {
     return false;
   }

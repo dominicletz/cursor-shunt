@@ -11,16 +11,19 @@ Keep large-file I/O and repetitive scaffolding off an expensive Cursor IDE agent
 
 The helpers use local SDK agents. `bulk-read` inlines XML file bodies and gives its agent no tools, so the corpus does not re-enter the parent context. `code-write` gives its agent only the `read` tool to inspect the reference.
 
-## Install
+## Install in Cursor
 
-Clone this repository into a project, or copy `.cursor/` and `scripts/` into an existing project:
+From a project directory, clone this repository and copy its project-local integration files, or copy `.cursor/` and `scripts/` directly:
 
 ```sh
+git clone https://github.com/dominicletz/cursor-shunt.git .cursor-shunt
+cp -R .cursor-shunt/.cursor ./
+cp -R .cursor-shunt/scripts ./
 npm install
 export CURSOR_API_KEY=...
 ```
 
-Node.js 22.13 or newer is required by the Cursor SDK. Keep `.cursor/hooks.json` at the project root. Restart or reload Cursor after installing hooks.
+If the project already has `.cursor/hooks.json`, merge the hook entries instead of overwriting unrelated settings. Node.js 22.13 or newer is required by the Cursor SDK. Keep hooks and skills at the project root, trust the workspace, enable project hooks if prompted, and reload Cursor after installing. For a one-shot installation prompt, see [INSTALL_PROMPT.md](INSTALL_PROMPT.md).
 
 ## Usage
 

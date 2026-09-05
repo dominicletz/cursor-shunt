@@ -1,15 +1,11 @@
 import { writeFile } from "node:fs/promises";
 import { Agent } from "@cursor/sdk";
-import { args, ensureApiKey, first, model, required, usageText } from "./cli.js";
+import { args, ensureApiKey, first, model, required, stripFences, usageText } from "./cli.js";
 
 const parsed = args(process.argv.slice(2));
 if (parsed.has("help") || parsed.has("h")) {
   console.log("Usage: npx tsx scripts/code-write.ts --spec \"...\" --reference path/to/example [--target path/to/output]");
   process.exit(0);
-}
-
-function stripFences(value: string): string {
-  return value.trim().replace(/^```(?:[a-zA-Z0-9_-]+)?\s*\n/, "").replace(/\n```\s*$/, "").trim() + "\n";
 }
 
 async function main() {

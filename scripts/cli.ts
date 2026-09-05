@@ -48,3 +48,7 @@ export function usageText(value: unknown): string {
   if (!value) return "";
   return typeof value === "string" ? value : JSON.stringify(value);
 }
+
+export function stripFences(value: string): string {
+  return value.trim().replace(/^```(?:[a-zA-Z0-9_-]+)?\s*\n/, "").replace(/\n```\s*$/, "").trim() + "\n";
+}

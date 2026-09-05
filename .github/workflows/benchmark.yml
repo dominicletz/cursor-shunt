@@ -60,9 +60,9 @@ jobs:
         run: npm run bench:ab -- --runs "${{ inputs.runs }}" --output bench/results/live-summary.json
 
       - name: Upload aggregate benchmark summary
-        if: ${{ steps.secret-check.outputs.configured == 'true' }}
+        if: ${{ always() && steps.secret-check.outputs.configured == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: sdk-benchmark-summary
           path: bench/results/live-summary.json
-          if-no-files-found: error
+          if-no-files-found: warn

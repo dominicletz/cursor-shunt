@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { FIXTURE_FILE_SPECS, writeFixture } from "../bench/generate-fixture.ts";
+import { isBulkReadInvocation } from "../bench/routing.ts";
 import { percentageSavings, sumTokenUsage } from "../bench/summary.ts";
 
 function lineCount(value: string): number {
@@ -54,4 +55,20 @@ test("summary helpers add usage and calculate parent savings", () => {
   assert.equal(percentageSavings(1_000, 650), 35);
   assert.equal(percentageSavings(0, 0), undefined);
   assert.equal(sumTokenUsage([]), undefined);
+});
+
+test("bulk-read detection scans serialized tool arguments", () => {
+  assert.equal(
+    isBulkReadInvocation({ command: "npx tsx scripts/bulk-read.ts --question \"find auth\" --paths generated/a.ts" }),
+    true,
+  );
+  assert.equal(
+    isBulkReadInvocation({ input: { argv: ["npx", "tsx", "bulk-read.ts", "--paths", "generated/a.ts"] } }),
+    true,
+  );
+  assert.equal(
+    isBulkReadInvocation({ command: "npx tsx scripts/bulk_read.ts --paths generated/a.ts" }),
+    true,
+  );
+  assert.equal(isBulkReadInvocation({ command: "npx tsx scripts/other.ts" }), false);
 });

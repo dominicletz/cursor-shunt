@@ -64,6 +64,10 @@ Do not use shunt for edits that need judgment, debugging, architecture, security
 
 Spotify’s published shunt story reports roughly 90% lower token usage in its own Claude Code and Portal setup; that is inspiration, not a benchmark for this project. Spotify’s implementation is Claude + Portal/AiKA. This project is Cursor-specific and uses Cursor hooks, `@cursor/sdk`, and Luna. It has no Portal dependency or MCP server in v1.
 
+## Benchmark
+
+The reproducible SDK-based parent-token A/B benchmark is documented in [`bench/README.md`](bench/README.md). It generates a synthetic large-file fixture, compares a local SDK parent with project hooks disabled against the shunt-enabled arm, and reports usage from `@cursor/sdk`. Run it locally with `CURSOR_API_KEY`; it is paid/live and is not run on every pull request.
+
 ## License
 
 MIT © Dominic Letz 2026.

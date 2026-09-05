@@ -3,3 +3,7 @@ dist/
 .env
 .DS_Store
 *.log
+bench/.runs/
+bench/fixture/.cursor/
+bench/fixture/packages/
+bench/fixture/scripts/

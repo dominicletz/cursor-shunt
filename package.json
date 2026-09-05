@@ -9,6 +9,8 @@
   },
   "scripts": {
     "bulk-read": "tsx scripts/bulk-read.ts",
+    "bench:fixture": "tsx bench/generate-fixture.ts",
+    "bench:ab": "tsx bench/ab.ts",
     "code-write": "tsx scripts/code-write.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

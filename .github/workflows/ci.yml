@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_bench:
+        description: Run the paid/live SDK A/B benchmark
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -22,5 +29,21 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      - run: npm run bench:fixture
       - run: npm run bulk-read -- --help
       - run: npm run code-write -- --help
+
+  benchmark:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_bench
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: npm
+      - run: npm ci
+      - run: npm run bench:ab -- --runs 3
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}

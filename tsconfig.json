@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["scripts/**/*.ts", ".cursor/hooks/**/*.ts"]
+  "include": ["scripts/**/*.ts", "bench/**/*.ts", ".cursor/hooks/**/*.ts"]
 }

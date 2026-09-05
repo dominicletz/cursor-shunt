@@ -3,7 +3,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["node_modules/**", "package-lock.json"],
+    ignores: ["node_modules/**", "package-lock.json", "bench/fixture/generated/**", "bench/results/**", ".bench-runs/**"],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,

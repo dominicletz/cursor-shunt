@@ -10,6 +10,8 @@
   "scripts": {
     "bulk-read": "tsx scripts/bulk-read.ts",
     "code-write": "tsx scripts/code-write.ts",
+    "bench:fixture": "tsx bench/generate-fixture.ts",
+    "bench:ab": "tsx bench/ab.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "node --import tsx --test test/**/*.test.ts"

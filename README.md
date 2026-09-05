@@ -20,7 +20,7 @@ git clone https://github.com/dominicletz/cursor-shunt.git .cursor-shunt
 cp -R .cursor-shunt/.cursor ./
 cp -R .cursor-shunt/scripts ./
 npm install
-export CURSOR_API_KEY=...
+export CURSOR_API_KEY="<your-own-Cursor-API-key>"
 ```
 
 If the project already has `.cursor/hooks.json`, merge the hook entries instead of overwriting unrelated settings. Node.js 22.13 or newer is required by the Cursor SDK. Keep hooks and skills at the project root, trust the workspace, enable project hooks if prompted, and reload Cursor after installing. For a one-shot installation prompt, see [INSTALL_PROMPT.md](INSTALL_PROMPT.md).
@@ -46,6 +46,13 @@ npx tsx scripts/code-write.ts \
 
 With `--target`, stdout contains only `{"path":"...","bytes":...}`. Without `--target`, generated code is printed to stdout. Answers go to stdout; token usage, when exposed by the SDK, goes to stderr.
 
+## Benchmark
+
+The optional [SDK-based A/B benchmark](bench/README.md) measures parent-agent
+usage with and without the shunt integration. It uses a fixed generated
+monorepo and reports measured usage only; this project does not claim a
+precomputed savings percentage.
+
 ## Configuration
 
 | Variable | Default | Purpose |
@@ -62,7 +69,8 @@ Do not use shunt for edits that need judgment, debugging, architecture, security
 
 ## Inspiration and scope
 
-Spotify’s published shunt story reports roughly 90% lower token usage in its own Claude Code and Portal setup; that is inspiration, not a benchmark for this project. Spotify’s implementation is Claude + Portal/AiKA. This project is Cursor-specific and uses Cursor hooks, `@cursor/sdk`, and Luna. It has no Portal dependency or MCP server in v1.
+This project is Cursor-specific and uses Cursor hooks, `@cursor/sdk`, and Luna.
+It has no Portal dependency or MCP server in v1.
 
 ## License
 

@@ -2,7 +2,7 @@ import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/pr
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { Agent, type AgentUsage } from "@cursor/sdk";
-import { DEFAULT_OUTPUT_DIRECTORY, FIXTURE_FILE_SPECS, writeFixture } from "./generate-fixture.js";
+import { DEFAULT_OUTPUT_DIRECTORY, FIXTURE_FILE_SPECS, SHUNT_MIN_LINES, writeFixture } from "./generate-fixture.js";
 import {
   percentageSavings,
   sumCost,
@@ -15,7 +15,6 @@ import { isBulkReadInvocation } from "./routing.js";
 export { isBulkReadInvocation };
 
 const DEFAULT_PARENT_MODEL = "gpt-5.6-sol";
-const SHUNT_MIN_LINES = 350;
 const REPO_ROOT = resolve(process.cwd());
 const FIXTURE_ROOT = resolve(REPO_ROOT, "bench/fixture");
 const PROMPT_PATH = join(FIXTURE_ROOT, "PROMPT.md");

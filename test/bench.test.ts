@@ -3,13 +3,9 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { FIXTURE_FILE_SPECS, writeFixture } from "../bench/generate-fixture.ts";
+import { fixtureLineCount, FIXTURE_FILE_SPECS, SHUNT_MIN_LINES, writeFixture } from "../bench/generate-fixture.ts";
 import { isBulkReadInvocation } from "../bench/routing.ts";
 import { percentageSavings, sumTokenUsage } from "../bench/summary.ts";
-
-function lineCount(value: string): number {
-  return value.length === 0 ? 0 : value.split(/\r?\n/).length;
-}
 
 test("fixture generator creates one large deterministic file per spec", async () => {
   const directory = await mkdtemp(join(tmpdir(), "cursor-shunt-fixture-"));
@@ -18,7 +14,10 @@ test("fixture generator creates one large deterministic file per spec", async ()
     assert.equal(paths.length, FIXTURE_FILE_SPECS.length);
     for (const [index, spec] of FIXTURE_FILE_SPECS.entries()) {
       const content = await readFile(paths[index], "utf8");
-      assert.ok(lineCount(content) >= 350, `${spec.relativePath} should be at least 350 lines`);
+      assert.ok(
+        fixtureLineCount(content) >= SHUNT_MIN_LINES,
+        `${spec.relativePath} should be at least ${SHUNT_MIN_LINES} lines`,
+      );
       for (const pattern of spec.patterns) assert.match(content, new RegExp(pattern.replace(".", "\\.")));
     }
   } finally {

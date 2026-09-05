@@ -22,9 +22,11 @@ const EXPECTED_LARGE_FILE_COUNT = FIXTURE_FILE_SPECS.length;
 const GENERATED_PATHS = FIXTURE_FILE_SPECS.map((spec) => `generated/${spec.relativePath}`);
 const BULK_READ_QUESTION = "Find every db.query and authenticate occurrence by file, symbol, and line number.";
 const SHUNT_REQUIRED_INSTRUCTION = [
-  "Mandatory shunt routing: after any denied large read (or instead of broad reads), you MUST run exactly:",
+  "This is the shunt benchmark arm. The parent read tool is intentionally unavailable because SDK project Read-hook enforcement is not reliable in CI.",
+  "Do not inspect generated files with shell, glob, grep, or another workaround.",
+  "You MUST make one shell call running exactly:",
   `npx tsx scripts/bulk-read.ts --question "${BULK_READ_QUESTION}" --paths ${GENERATED_PATHS.join(" ")}`,
-  "Do not finish without that helper call.",
+  "The command must cover all four paths above. Use the helper output to answer the original question, and do not finish without that helper call.",
 ].join("\n");
 const DEFAULT_FAILURE_OUTPUT = resolve(REPO_ROOT, "bench/results/bench-failure.json");
 
@@ -169,15 +171,25 @@ function promptForArm(arm: Arm, prompt: string): string {
 
 async function verifyShuntWorkspace(workspace: string): Promise<void> {
   const hooks = JSON.parse(await readFile(join(workspace, ".cursor", "hooks.json"), "utf8")) as unknown;
-  const configuredHooks = isRecord(hooks) && isRecord(hooks.hooks) ? hooks.hooks.beforeReadFile : undefined;
-  const hasBeforeReadFile = Array.isArray(configuredHooks)
-    && configuredHooks.some((entry: unknown) => (
+  const hookConfig = isRecord(hooks) && isRecord(hooks.hooks) ? hooks.hooks : undefined;
+  const configuredBeforeReadFile = hookConfig?.beforeReadFile;
+  const configuredPreToolUse = hookConfig?.preToolUse;
+  const hasBeforeReadFile = Array.isArray(configuredBeforeReadFile)
+    && configuredBeforeReadFile.some((entry: unknown) => (
       isRecord(entry)
       && typeof entry.command === "string"
       && entry.command.includes("before-read-file.mjs")
     ));
-  if (!hasBeforeReadFile) {
-    throw new Error("shunt workspace is missing the .cursor beforeReadFile hook");
+  const hasReadPreToolUse = Array.isArray(configuredPreToolUse)
+    && configuredPreToolUse.some((entry: unknown) => (
+      isRecord(entry)
+      && typeof entry.command === "string"
+      && entry.command.includes("before-read-file.mjs")
+      && typeof entry.matcher === "string"
+      && /(?:^|\|)(?:Read|read)(?:\||$)/.test(entry.matcher)
+    ));
+  if (!hasBeforeReadFile || !hasReadPreToolUse) {
+    throw new Error("shunt workspace is missing the .cursor large-read hooks");
   }
   await readFile(join(workspace, ".cursor", "hooks", "before-read-file.mjs"), "utf8");
 }
@@ -394,7 +406,7 @@ async function runArm(
     agent = await Agent.create({
       apiKey,
       model: { id: parentModel() },
-      tools: ["read", "shell", "glob", "grep"],
+      tools: arm === "shunt" ? ["shell"] : ["read", "shell", "glob", "grep"],
       local: {
         cwd: workspace,
         dirs: [workspace],

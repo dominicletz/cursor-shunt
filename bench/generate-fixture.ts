@@ -1,8 +1,7 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
-export const DEFAULT_OUTPUT_DIRECTORY = resolve(dirname(fileURLToPath(import.meta.url)), "fixture/generated");
+export const DEFAULT_OUTPUT_DIRECTORY = resolve(process.cwd(), "bench/fixture/generated");
 export const RECORD_COUNT = 180;
 
 export const FIXTURE_FILE_SPECS = [
@@ -115,7 +114,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   console.log(`Generated ${paths.length} benchmark files in ${outputDirectory}`);
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1]?.endsWith("bench/generate-fixture.ts")) {
   main().catch((error) => {
     console.error(`bench:fixture: ${error instanceof Error ? error.message : String(error)}`);
     process.exitCode = 1;

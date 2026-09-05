@@ -1,6 +1,6 @@
 import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { Agent, type AgentUsage } from "@cursor/sdk";
 import { DEFAULT_OUTPUT_DIRECTORY, FIXTURE_FILE_SPECS, writeFixture } from "./generate-fixture.js";
 import {
@@ -12,8 +12,8 @@ import {
 } from "./summary.js";
 
 const DEFAULT_PARENT_MODEL = "gpt-5.6";
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const FIXTURE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "fixture");
+const REPO_ROOT = resolve(process.cwd());
+const FIXTURE_ROOT = resolve(REPO_ROOT, "bench/fixture");
 const PROMPT_PATH = join(FIXTURE_ROOT, "PROMPT.md");
 const EXPECTED_LARGE_FILE_COUNT = FIXTURE_FILE_SPECS.length;
 
@@ -124,7 +124,7 @@ function parentModel(): string {
 }
 
 async function prepareWorkspace(arm: Arm, fixtureDirectory: string, runNumber: number): Promise<string> {
-  const workspace = await mkdtemp(join("/tmp", `cursor-shunt-bench-${arm}-${runNumber}-`));
+  const workspace = await mkdtemp(join(tmpdir(), `cursor-shunt-bench-${arm}-${runNumber}-`));
   try {
     await cp(join(FIXTURE_ROOT, "PROMPT.md"), join(workspace, "PROMPT.md"));
     await cp(fixtureDirectory, join(workspace, "generated"), { recursive: true });
@@ -313,7 +313,7 @@ function assertRouting(arm: Arm, routing: RoutingEvidence): void {
 
 function aggregateComplete(values: ReadonlyArray<number | null>): number | null {
   if (values.length === 0 || values.some((value) => value === null)) return null;
-  return values.reduce((total, value) => total + (value ?? 0), 0);
+  return values.reduce<number>((total, value) => total + (value ?? 0), 0);
 }
 
 function reportUsage(usage: AgentUsage | undefined): TokenUsage | null {
@@ -395,7 +395,7 @@ function summarize(arms: ArmReport[]): BenchmarkReport["summary"] {
   const baselineLunaWorkerTokens = aggregateComplete(baseline.map((report) => report.lunaWorkerTokens));
   const shuntLunaWorkerTokens = aggregateComplete(shunt.map((report) => report.lunaWorkerTokens));
   const parentCosts = sumCost(
-    arms.map((report) => report.parentCost),
+    arms.map((report) => report.parentCost ?? undefined),
   );
 
   return {
@@ -440,7 +440,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   console.log(serialized);
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1]?.endsWith("bench/ab.ts")) {
   main().catch((error) => {
     console.error(`bench:ab: ${errorMessage(error)}`);
     process.exitCode = 1;

@@ -13,17 +13,49 @@ The helpers use local SDK agents. `bulk-read` inlines XML file bodies and gives 
 
 ## Install in Cursor
 
-From a project directory, clone this repository and copy its project-local integration files, or copy `.cursor/` and `scripts/` directly:
+Node.js 22.13 or newer is required by the Cursor SDK. Pick one option.
+
+### Option 1: global install (all projects)
+
+Clone the repository to a permanent location and run the installer:
+
+```sh
+git clone https://github.com/dominicletz/cursor-shunt.git ~/.cursor-shunt
+cd ~/.cursor-shunt
+npm run install:global
+export CURSOR_API_KEY="<your-own-Cursor-API-key>"
+```
+
+The installer runs `npm install`, then writes to `~/.cursor`:
+
+- `hooks.json`: merged with your existing hooks. Older cursor-shunt entries are replaced. A backup is saved as `hooks.json.bak`.
+- `skills/bulk-reader/SKILL.md` and `skills/code-writer/SKILL.md`.
+
+The hooks, the skills, and the hook messages use absolute paths into the clone, so they work in every project. Do not move or delete the clone. To update, run `git pull && npm run install:global` in the clone. Use `--cursor-dir <dir>` to install into a different Cursor directory, and `--skip-npm` to skip `npm install`.
+
+### Option 2: project-local install
+
+From a project directory, clone this repository and copy its integration files:
 
 ```sh
 git clone https://github.com/dominicletz/cursor-shunt.git .cursor-shunt
 cp -R .cursor-shunt/.cursor ./
 cp -R .cursor-shunt/scripts ./
-npm install
+npm install --save-dev @cursor/sdk tsx
 export CURSOR_API_KEY="<your-own-Cursor-API-key>"
 ```
 
-If the project already has `.cursor/hooks.json`, merge the hook entries instead of overwriting unrelated settings. Node.js 22.13 or newer is required by the Cursor SDK. Keep hooks and skills at the project root, trust the workspace, enable project hooks if prompted, and reload Cursor after installing. For a one-shot installation prompt, see [INSTALL_PROMPT.md](INSTALL_PROMPT.md).
+If the project already has `.cursor/hooks.json`, merge the hook entries instead of overwriting unrelated settings. Keep hooks and skills at the project root, trust the workspace, and enable project hooks if prompted.
+
+After either option, reload Cursor and make sure `CURSOR_API_KEY` is set in the environment that starts Cursor. For a one-shot installation prompt, see [INSTALL_PROMPT.md](INSTALL_PROMPT.md).
+
+### Verify
+
+```sh
+npx tsx scripts/bulk-read.ts --help
+```
+
+Run it in the clone (global install) or in your project (project-local install). Then ask the agent to read a file with at least `SHUNT_MIN_LINES` lines. The hook must block the read and name the `bulk-read` command.
 
 ## Usage
 
@@ -61,7 +93,7 @@ precomputed savings percentage.
 | `SHUNT_MIN_LINES` | `350` | Minimum line count for broad-read and shell-display blocking |
 | `SHUNT_MODEL` | `gpt-5.6-luna` | Optional model ID override; reasoning remains `none` |
 
-Hooks fail open when they cannot parse an event or inspect a file. Targeted reads with offset/limit-style fields are allowed. Shell commands containing a pipe or redirection are allowed so commands such as `cat file | rg pattern` remain useful.
+User-level hooks run from `~/.cursor`, so the global install uses absolute paths. Hooks fail open when they cannot parse an event or inspect a file. Targeted reads with offset/limit-style fields are allowed. Shell commands containing a pipe or redirection are allowed so commands such as `cat file | rg pattern` remain useful.
 
 ## What not to delegate
 

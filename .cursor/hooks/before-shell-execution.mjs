@@ -1,4 +1,4 @@
-import { hasTargetedRange, input, isLargeFile, deny, allow } from "./common.mjs";
+import { hasTargetedRange, helperCommand, input, isLargeFile, deny, allow } from "./common.mjs";
 
 const viewer = /\b(?:cat|head|tail|less|more)\b/;
 const pipeOrRedirect = /(?:\||>>?)/;
@@ -15,7 +15,7 @@ try {
     if (large.length === 0 || hasTargetedRange(command)) {
       allow();
     } else {
-      deny(`Large-file shell display blocked. Run: npx tsx scripts/bulk-read.ts --question "your focused question" --paths ${large.map((path) => `"${path}"`).join(" ")}.`);
+      deny(`Large-file shell display blocked. Run: ${helperCommand("bulk-read")} --question "your focused question" --paths ${large.map((path) => `"${path}"`).join(" ")}.`);
     }
   }
 } catch {

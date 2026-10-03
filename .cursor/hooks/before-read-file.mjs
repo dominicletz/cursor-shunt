@@ -1,4 +1,4 @@
-import { hasTargetedRange, input, isLargeFile, pathFrom, deny, allow } from "./common.mjs";
+import { hasTargetedRange, helperCommand, input, isLargeFile, pathFrom, deny, allow } from "./common.mjs";
 
 try {
   const event = await input();
@@ -15,7 +15,7 @@ try {
     allow();
   } else {
     deny(
-      `This file is at least SHUNT_MIN_LINES lines. Run: npx tsx scripts/bulk-read.ts --question "your focused question" --paths "${path}". Use a targeted offset/limit read when you only need a small section.`
+      `This file is at least SHUNT_MIN_LINES lines. Run: ${helperCommand("bulk-read")} --question "your focused question" --paths "${path}". Use a targeted offset/limit read when you only need a small section.`
     );
   }
 } catch {

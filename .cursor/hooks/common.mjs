@@ -1,5 +1,20 @@
 import { access, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Repository root that owns these hooks: <root>/.cursor/hooks/common.mjs.
+export const shuntRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+
+// Command line that runs a helper script from any working directory.
+export function absoluteHelperCommand(name, root = shuntRoot) {
+  return `"${join(root, "node_modules", ".bin", "tsx")}" "${join(root, "scripts", `${name}.ts`)}"`;
+}
+
+// Short form when the project is the shunt root itself, absolute form otherwise.
+export function helperCommand(name, cwd = process.cwd()) {
+  return resolve(cwd) === shuntRoot ? `npx tsx scripts/${name}.ts` : absoluteHelperCommand(name);
+}
 
 export const minLines = () => {
   const value = Number.parseInt(process.env.SHUNT_MIN_LINES ?? "350", 10);

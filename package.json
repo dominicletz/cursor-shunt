@@ -10,6 +10,7 @@
   "scripts": {
     "bulk-read": "tsx scripts/bulk-read.ts",
     "code-write": "tsx scripts/code-write.ts",
+    "install:global": "node scripts/install-global.mjs",
     "bench:fixture": "tsx bench/generate-fixture.ts",
     "bench:ab": "tsx bench/ab.ts",
     "typecheck": "tsc --noEmit",

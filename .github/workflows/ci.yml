@@ -24,3 +24,4 @@ jobs:
       - run: npm test
       - run: npm run bulk-read -- --help
       - run: npm run code-write -- --help
+      - run: npm run install:global -- --help

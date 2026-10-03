@@ -52,3 +52,9 @@ export function usageText(value: unknown): string {
 export function stripFences(value: string): string {
   return value.trim().replace(/^```(?:[a-zA-Z0-9_-]+)?\s*\n/, "").replace(/\n```\s*$/, "").trim() + "\n";
 }
+
+// The SDK rejects the `systemPrompt` option at runtime (hidden, team-only flag),
+// so role instructions travel at the start of the first message instead.
+export function withInstructions(instructions: string, prompt: string): string {
+  return `<instructions>${instructions}</instructions>\n\n${prompt}`;
+}

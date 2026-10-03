@@ -3,7 +3,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { args, escapeXml, fileXml, first, stripFences } from "../scripts/cli.ts";
+import { args, escapeXml, fileXml, first, stripFences, withInstructions } from "../scripts/cli.ts";
 
 test("parses repeated CLI options and positional values", () => {
   const parsed = args(["--question", "find", "auth", "--paths", "a.ts", "b.ts", "--target", "out.ts"]);
@@ -25,4 +25,8 @@ test("escapes and wraps file bodies as XML", async () => {
 test("strips optional markdown fences", () => {
   assert.equal(stripFences("```ts\nconst answer = 1;\n```"), "const answer = 1;\n");
   assert.equal(stripFences("const answer = 1;"), "const answer = 1;\n");
+});
+
+test("prepends role instructions to the prompt", () => {
+  assert.equal(withInstructions("Be terse.", "Hello"), "<instructions>Be terse.</instructions>\n\nHello");
 });

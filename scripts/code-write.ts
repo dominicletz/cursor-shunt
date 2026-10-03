@@ -1,12 +1,14 @@
 import { writeFile } from "node:fs/promises";
 import { Agent } from "@cursor/sdk";
-import { args, ensureApiKey, first, model, required, stripFences, usageText } from "./cli.js";
+import { args, ensureApiKey, first, model, required, stripFences, usageText, withInstructions } from "./cli.js";
 
 const parsed = args(process.argv.slice(2));
 if (parsed.has("help") || parsed.has("h")) {
   console.log("Usage: npx tsx scripts/code-write.ts --spec \"...\" --reference path/to/example [--target path/to/output]");
   process.exit(0);
 }
+
+const INSTRUCTIONS = "You are a disciplined code generator. Match the supplied reference's conventions exactly. Output only the requested code, with no markdown fences, explanation, or preamble.";
 
 async function main() {
   const spec = required(first(parsed, "spec"), "--spec");
@@ -16,11 +18,10 @@ async function main() {
     apiKey: ensureApiKey(),
     local: { cwd: process.cwd() },
     model: model(),
-    tools: ["read"],
-    systemPrompt: "You are a disciplined code generator. Match the supplied reference's conventions exactly. Output only the requested code, with no markdown fences, explanation, or preamble."
+    tools: ["read"]
   });
   try {
-    const run = await agent.send(`Specification:\n${spec}\n\nReference file to inspect:\n${reference}`);
+    const run = await agent.send(withInstructions(INSTRUCTIONS, `Specification:\n${spec}\n\nReference file to inspect:\n${reference}`));
     const response = await run.wait();
     if (response.status === "error") throw new Error(response.error?.message ?? "agent run failed");
     const code = stripFences(response.result ?? "");

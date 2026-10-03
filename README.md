@@ -95,7 +95,7 @@ precomputed savings percentage.
 | `SHUNT_GRANT_SECONDS` | `600` | How long `allow-edit` allows full reads of a file |
 | `SHUNT_GRANTS_FILE` | `<tmpdir>/cursor-shunt-grants.json` | Where `allow-edit` stores its grants |
 
-User-level hooks run from `~/.cursor`, so the global install uses absolute paths. Hooks fail open when they cannot parse an event or inspect a file. Targeted reads with offset/limit-style fields are allowed. Shell commands containing a pipe or redirection are allowed so commands such as `cat file | rg pattern` remain useful.
+User-level hooks run from `~/.cursor`, so the global install uses absolute paths. Hooks fail open when they cannot parse an event or inspect a file. Reads that carry offset/limit-style fields are allowed, but Cursor does not send those fields for the `Read` tool, so use `sed -n 'START,ENDp' file` to read a section. Shell commands containing a pipe or redirection are allowed so commands such as `cat file | rg pattern` remain useful.
 
 ## Editing large files
 
@@ -107,6 +107,7 @@ To edit a large file, run `node .cursor/hooks/allow-edit.mjs <file>` first. It r
 
 The hooks are a cost nudge, not an access control.
 
+- The `Read` tool always looks like a full read. Its `preToolUse` payload holds only `tool_input.file_path`; `offset` and `limit` are dropped, so a ranged `Read` of a large file is blocked too. The `beforeReadFile` hook does not fire for the `Read` tool.
 - The `Read` tool and the shell commands `cat`, `head`, `tail`, `less` and `more` are checked. `head` and `tail` with a count (`-n 20`, `-20`, `-c 100`) count as targeted reads.
 - Other routes are not checked: `sed`, `awk`, `rg`, `git show`, `git diff`, scripting languages and the `Grep` tool. An agent can read a large file through them.
 - Both `beforeReadFile` and `preToolUse` run this script. `beforeReadFile` reads only `user_message` and `preToolUse` reads only `agent_message`, so a denial sends the same text in both fields.

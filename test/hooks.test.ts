@@ -106,3 +106,12 @@ test("shell hook treats head/tail counts as targeted reads", async () => {
   assert.equal((await hook(script, { command: `cat -n ${path}` })).permission, "deny");
   assert.equal((await hook(script, { command: `tail ${path}` })).permission, "deny");
 });
+
+test("deny message points to sed for a section and not to a ranged Read", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "cursor-shunt-"));
+  const path = join(directory, "large.txt");
+  await writeFile(path, "one\ntwo\nthree", "utf8");
+  const { agent_message } = await hook(".cursor/hooks/before-read-file.mjs", { tool_name: "Read", tool_input: { file_path: path } });
+  assert.match(agent_message, /sed -n 'START,ENDp'/);
+  assert.doesNotMatch(agent_message, /use a Read with offset and limit/);
+});

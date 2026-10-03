@@ -12,4 +12,13 @@ When a hook denies a read because a file is at least `SHUNT_MIN_LINES` lines:
 3. Use the concise structured result in your reasoning. The full file bodies stay inside the helper agent.
 4. For a small known section, use a targeted read with an offset and limit instead.
 
-Do not use this helper for edits, debugging, architecture decisions, or small files.
+## Editing a large file
+
+Edit tools (`StrReplace`, `Write`) read the whole file first, and the hook cannot tell that read from a normal read. So the hook also blocks edits of large files. Before the edit:
+
+1. Run `node .cursor/hooks/allow-edit.mjs path/to/file`. It needs no API key and no model call.
+2. Make the edit. The file stays readable in full for `SHUNT_GRANT_SECONDS` seconds (default 600).
+
+Do not use `allow-edit` to read a file in full. Use `bulk-read` or a targeted read for that.
+
+Do not use the `bulk-read` helper for edits, debugging, architecture decisions, or small files.

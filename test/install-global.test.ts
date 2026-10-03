@@ -42,6 +42,8 @@ test("global skill rewrites helper invocations to absolute commands", () => {
   const text = globalSkill("Run `npx tsx scripts/bulk-read.ts --paths a`.\nnpx tsx scripts/code-write.ts \\", "/opt/shunt");
   assert.ok(text.includes(`${absoluteHelperCommand("bulk-read", "/opt/shunt")} --paths a`));
   assert.ok(!text.includes("npx tsx"));
+  const edit = globalSkill("Run `node .cursor/hooks/allow-edit.mjs a.ex`.", "/opt/shunt");
+  assert.equal(edit, "Run `node \"/opt/shunt/.cursor/hooks/allow-edit.mjs\" a.ex`.");
 });
 
 test("helperCommand is short inside the shunt root and absolute elsewhere", () => {

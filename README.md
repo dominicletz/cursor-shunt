@@ -92,8 +92,24 @@ precomputed savings percentage.
 | `CURSOR_API_KEY` | — | Required SDK authentication key |
 | `SHUNT_MIN_LINES` | `350` | Minimum line count for broad-read and shell-display blocking |
 | `SHUNT_MODEL` | `gpt-5.6-luna` | Optional model ID override; reasoning remains `none` |
+| `SHUNT_GRANT_SECONDS` | `600` | How long `allow-edit` allows full reads of a file |
+| `SHUNT_GRANTS_FILE` | `<tmpdir>/cursor-shunt-grants.json` | Where `allow-edit` stores its grants |
 
 User-level hooks run from `~/.cursor`, so the global install uses absolute paths. Hooks fail open when they cannot parse an event or inspect a file. Targeted reads with offset/limit-style fields are allowed. Shell commands containing a pipe or redirection are allowed so commands such as `cat file | rg pattern` remain useful.
+
+## Editing large files
+
+`StrReplace` and `Write` read the whole file before they edit it. Cursor sends that read to the hook as a normal `Read` event (`tool_name: "Read"`, `tool_input.file_path`), the same as a real read. The hook cannot tell them apart, so it would block every edit of a large file.
+
+To edit a large file, run `node .cursor/hooks/allow-edit.mjs <file>` first. It records a grant that expires after `SHUNT_GRANT_SECONDS`, and the hook allows full reads of that file until then. The deny message names this command.
+
+## Limits
+
+The hooks are a cost nudge, not an access control.
+
+- The `Read` tool and the shell commands `cat`, `head`, `tail`, `less` and `more` are checked. `head` and `tail` with a count (`-n 20`, `-20`, `-c 100`) count as targeted reads.
+- Other routes are not checked: `sed`, `awk`, `rg`, `git show`, `git diff`, scripting languages and the `Grep` tool. An agent can read a large file through them.
+- Both `beforeReadFile` and `preToolUse` run this script. `beforeReadFile` reads only `user_message` and `preToolUse` reads only `agent_message`, so a denial sends the same text in both fields.
 
 ## What not to delegate
 

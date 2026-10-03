@@ -67,3 +67,42 @@ test("shell hook denies cat/head of large files but allows pipes", async () => {
   assert.equal((await hook(script, { command: `head ${path}` })).permission, "deny");
   assert.equal((await hook(script, { command: `cat ${path} | rg two` })).permission, "allow");
 });
+
+test("deny sends the route to the helper in both message fields with the real line limit", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "cursor-shunt-"));
+  const path = join(directory, "large.txt");
+  await writeFile(path, "one\ntwo\nthree", "utf8");
+  const result = await hook(".cursor/hooks/before-read-file.mjs", { tool_input: { path } });
+  assert.equal(result.user_message, result.agent_message);
+  assert.match(result.agent_message, /at least 3 lines/);
+  assert.match(result.agent_message, /bulk-read\.ts/);
+  assert.match(result.agent_message, /allow-edit\.mjs/);
+});
+
+test("allow-edit grants full reads of a large file until the grant expires", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "cursor-shunt-"));
+  const path = join(directory, "large.txt");
+  const grants = join(directory, "grants.json");
+  await writeFile(path, "one\ntwo\nthree", "utf8");
+  const script = ".cursor/hooks/before-read-file.mjs";
+  const env = { SHUNT_GRANTS_FILE: grants };
+
+  assert.equal((await hook(script, { tool_name: "Read", tool_input: { file_path: path } }, env)).permission, "deny");
+  await new Promise<void>((resolve, reject) => {
+    execFile("node", [".cursor/hooks/allow-edit.mjs", path], { env: { ...process.env, ...env } }, (error) => (error ? reject(error) : resolve()));
+  });
+  assert.equal((await hook(script, { tool_name: "Read", tool_input: { file_path: path } }, env)).permission, "allow");
+  assert.equal((await hook(script, { tool_name: "Read", tool_input: { file_path: path } }, { ...env, SHUNT_GRANTS_FILE: join(directory, "none.json") })).permission, "deny");
+});
+
+test("shell hook treats head/tail counts as targeted reads", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "cursor-shunt-"));
+  const path = join(directory, "large.txt");
+  await writeFile(path, "one\ntwo\nthree", "utf8");
+  const script = ".cursor/hooks/before-shell-execution.mjs";
+  for (const command of [`head -n 2 ${path}`, `head -2 ${path}`, `tail -n +2 ${path}`, `head -c 100 ${path}`]) {
+    assert.equal((await hook(script, { command })).permission, "allow", command);
+  }
+  assert.equal((await hook(script, { command: `cat -n ${path}` })).permission, "deny");
+  assert.equal((await hook(script, { command: `tail ${path}` })).permission, "deny");
+});

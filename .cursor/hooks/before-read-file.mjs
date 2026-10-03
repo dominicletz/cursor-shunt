@@ -1,4 +1,4 @@
-import { hasTargetedRange, helperCommand, input, isLargeFile, pathFrom, deny, allow } from "./common.mjs";
+import { grantTtlMs, hasTargetedRange, helperCommand, hookCommand, input, isGranted, isLargeFile, minLines, pathFrom, deny, allow } from "./common.mjs";
 
 try {
   const event = await input();
@@ -11,11 +11,11 @@ try {
   const targetedRange = hasTargetedRange(inputValue)
     || (inputValue !== event && hasTargetedRange(event));
 
-  if (targetedRange || !(await isLargeFile(path, content))) {
+  if (targetedRange || isGranted(path) || !(await isLargeFile(path, content))) {
     allow();
   } else {
     deny(
-      `This file is at least SHUNT_MIN_LINES lines. Run: ${helperCommand("bulk-read")} --question "your focused question" --paths "${path}". Use a targeted offset/limit read when you only need a small section.`
+      `This file has at least ${minLines()} lines. To understand it, run: ${helperCommand("bulk-read")} --question "your focused question" --paths "${path}". For a small section, use a Read with offset and limit. To edit it, run: ${hookCommand("allow-edit")} "${path}" and then edit (edit tools read the whole file first, and the hook cannot tell that from a read). The allow-edit command allows full reads of this file for ${grantTtlMs() / 60000} minutes.`
     );
   }
 } catch {

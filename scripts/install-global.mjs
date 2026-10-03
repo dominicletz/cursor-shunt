@@ -3,7 +3,7 @@ import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { absoluteHelperCommand, shuntRoot } from "../.cursor/hooks/common.mjs";
+import { absoluteHelperCommand, hookCommand, shuntRoot } from "../.cursor/hooks/common.mjs";
 
 const SKILLS = ["bulk-reader", "code-writer"];
 const OWN_HOOK = /before-(?:read-file|shell-execution)\.mjs/;
@@ -34,7 +34,9 @@ export function mergeHooks(existing, ours) {
 
 /** Rewrite relative helper invocations in a skill so they run from any project. */
 export function globalSkill(text, root) {
-  return text.replace(/npx tsx scripts\/([\w-]+)\.ts/g, (_, name) => absoluteHelperCommand(name, root));
+  return text
+    .replace(/npx tsx scripts\/([\w-]+)\.ts/g, (_, name) => absoluteHelperCommand(name, root))
+    .replace(/node \.cursor\/hooks\/([\w-]+)\.mjs/g, (_, name) => hookCommand(name, root));
 }
 
 export async function installGlobal({ root = shuntRoot, cursorDir = join(homedir(), ".cursor"), skipNpm = false } = {}) {
